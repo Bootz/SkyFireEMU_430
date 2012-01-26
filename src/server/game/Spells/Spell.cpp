@@ -3944,6 +3944,8 @@ void Spell::SendSpellGo()
 
 void Spell::WriteSpellGoTargets(WorldPacket* data)
 {
+    *data << uint32(0); // unk 4.3
+
     // This function also fill data for channeled spells:
     // m_needAliveTargetMask req for stop channelig if one target die
     uint32 hit  = m_UniqueGOTargetInfo.size(); // Always hits on GO

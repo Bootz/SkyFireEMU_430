@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -87,9 +87,11 @@ typedef ACE_Svc_Handler<ACE_SOCK_STREAM, ACE_NULL_SYNCH> WorldHandler;
  * notification.
  *
  */
-class WorldSocket : protected WorldHandler
+class WorldSocket : public WorldHandler
 {
     public:
+        WorldSocket (void);
+        virtual ~WorldSocket (void);
         /// Declare some friends
         friend class ACE_Acceptor< WorldSocket, ACE_SOCK_ACCEPTOR >;
         friend class WorldSocketMgr;
@@ -122,17 +124,15 @@ class WorldSocket : protected WorldHandler
         /// Remove reference to this object.
         long RemoveReference (void);
 
-    protected:
         /// things called by ACE framework.
-        WorldSocket (void);
-        virtual ~WorldSocket (void);
 
         /// Called on open , the void* is the acceptor.
+        int SendAuthConnection();
         int HandleAuthConnection(WorldPacket& recvPacket);
         virtual int open (void *);
 
         /// Called on failures inside of the acceptor, don't call from your code.
-        virtual int close (int);
+        virtual int close (u_long);
 
         /// Called when we can read from the socket.
         virtual int handle_input (ACE_HANDLE = ACE_INVALID_HANDLE);
@@ -168,7 +168,7 @@ class WorldSocket : protected WorldHandler
         /// Called by ProcessIncoming() on CMSG_AUTH_SESSION.
         int HandleAuthSession (WorldPacket& recvPacket);
 
-        /// Called by ProcessIncoming() on MSG_VERIFY_CONNECTIVITY.
+        /// Called by CMSG_VERIFY_CONNECTIVITY_RESPONSE
         int HandleSendAuthSession();
 
         /// Called by ProcessIncoming() on CMSG_PING.

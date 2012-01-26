@@ -407,11 +407,13 @@ class WorldSession
         void HandleCharCreateCallback(PreparedQueryResult result, CharacterCreateInfo* createInfo);
         void HandlePlayerLoginOpcode(WorldPacket& recvPacket);
 
-        void HandleWorldLoginOpcode(WorldPacket& recvPacket);
+        void HandleLoadScreenNotifyOpcode(WorldPacket& recvPacket);
 
         void HandleCharEnum(PreparedQueryResult result);
         void HandlePlayerLogin(LoginQueryHolder * holder);
         void HandleCharFactionOrRaceChange(WorldPacket& recv_data);
+
+        void HandleRandomizeCharNameOpcode(WorldPacket& recv_data);
 
         // played time
         void HandlePlayedTime(WorldPacket& recvPacket);
@@ -916,12 +918,16 @@ class WorldSession
         void HandleEquipmentSetUse(WorldPacket& recv_data);
         void HandleWorldStateUITimerUpdate(WorldPacket& recv_data);
         void HandleReadyForAccountDataTimes(WorldPacket& recv_data);
+        void HandleObjectUpdateFail(WorldPacket& recv_data);
         void HandleQueryQuestsCompleted(WorldPacket& recv_data);
         void HandleQuestPOIQuery(WorldPacket& recv_data);
         void HandleEjectPassenger(WorldPacket& data);
         void HandleEnterPlayerVehicle(WorldPacket& data);
         void HandleUpdateProjectilePosition(WorldPacket& recvPacket);
         void HandleReforgeItem(WorldPacket& recv_data);
+        void HandleSendCemetryList(WorldPacket& recvPacket);
+
+        void PlayerViolenceLevel(WorldPacket& recvPacket);
 
     private:
         void InitializeQueryCallbackParameters();

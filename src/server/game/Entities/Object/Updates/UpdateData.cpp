@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2010-2012 Project SkyFire <http://www.projectskyfire.org/>
- * Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2011 Project SkyFire <http://www.projectskyfire.org/>
+ * Copyright (C) 2008-2011 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,28 +44,50 @@ void UpdateData::AddUpdateBlock(const ByteBuffer &block)
     ++m_blockCount;
 }
 
-bool UpdateData::BuildPacket(WorldPacket* packet)
+bool UpdateData::BuildPacket(WorldPacket *packet)
 {
     ASSERT(packet->empty());                                // shouldn't happen
 
-    packet->Initialize(SMSG_UPDATE_OBJECT, 2 + 4 + (m_outOfRangeGUIDs.empty() ? 0 : 1 + 4 + 9 * m_outOfRangeGUIDs.size()) + m_data.wpos());
+    ByteBuffer buf(2 + 4 + (m_outOfRangeGUIDs.empty() ? 0 : 1 + 4 + 9 * m_outOfRangeGUIDs.size()) + m_data.wpos());
 
-    *packet << uint16(m_map);
-    *packet << uint32(m_blockCount);
+    buf << uint16(m_map);
+    buf << uint32(!m_outOfRangeGUIDs.empty() ? m_blockCount + 1 : m_blockCount);
 
     if (!m_outOfRangeGUIDs.empty())
     {
-        *packet << uint8(UPDATETYPE_OUT_OF_RANGE_OBJECTS);
-        *packet << uint32(m_outOfRangeGUIDs.size());
+        buf << uint8(UPDATETYPE_OUT_OF_RANGE_OBJECTS);
+        buf << uint32(m_outOfRangeGUIDs.size());
 
         for (std::set<uint64>::const_iterator i = m_outOfRangeGUIDs.begin(); i != m_outOfRangeGUIDs.end(); ++i)
-            packet->appendPackGUID(*i);
+        {
+            buf.appendPackGUID(*i);
+        }
     }
 
-    packet->append(m_data);
+    buf.append(m_data);
 
-    if (packet->wpos() > 100)
-        packet->Compress(SMSG_COMPRESSED_UPDATE_OBJECT);
+    // Disabled
+    /*
+    size_t pSize = buf.wpos();                             // use real used data size
+
+    if (pSize > 100)                                       // compress large packets
+    {
+        uint32 destsize = compressBound(pSize);
+        packet->resize(destsize + sizeof(uint32));
+
+        packet->put<uint32>(0, pSize);
+        Compress(const_cast<uint8*>(packet->contents()) + sizeof(uint32), &destsize, (void*)buf.contents(), pSize);
+        if (destsize == 0)
+            return false;
+
+        packet->resize(destsize + sizeof(uint32));
+        packet->SetOpcode(SMSG_COMPRESSED_UPDATE_OBJECT);
+    }
+    else                                                    // send small packets without compression
+    {*/
+        packet->append(buf);
+        packet->SetOpcode(SMSG_UPDATE_OBJECT);
+    //}
 
     return true;
 }
@@ -76,4 +98,25 @@ void UpdateData::Clear()
     m_outOfRangeGUIDs.clear();
     m_blockCount = 0;
     m_map = 0;
+}
+
+void WorldSession::HandleObjectUpdateFail(WorldPacket& recvPacket)
+{
+    uint64 GUID;
+    BitStream stream = recvPacket.ReadBitStream(8);
+
+    ByteBuffer bytes(8, true);
+
+    if (stream[6]) bytes[2] = recvPacket.ReadUInt8() ^ 1;
+    if (stream[7]) bytes[1] = recvPacket.ReadUInt8() ^ 1;
+    if (stream[1]) bytes[0] = recvPacket.ReadUInt8() ^ 1;
+    if (stream[4]) bytes[5] = recvPacket.ReadUInt8() ^ 1;
+    if (stream[5]) bytes[4] = recvPacket.ReadUInt8() ^ 1;
+    if (stream[2]) bytes[6] = recvPacket.ReadUInt8() ^ 1;
+    if (stream[3]) bytes[3] = recvPacket.ReadUInt8() ^ 1;
+    if (stream[0]) bytes[7] = recvPacket.ReadUInt8() ^ 1;
+
+    GUID = BitConverter::ToUInt64(bytes);
+
+    sLog->outError("Fatal Error: failed to update object with GUID "UI64FMTD" (type: %u)", GUID, GetLogNameForGuid(GUID));
 }
